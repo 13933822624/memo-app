@@ -1,0 +1,23 @@
+{
+  "name": "备忘录",
+  "short_name": "备忘录",
+  "description": "支持文字、图片、语音的日历备忘录",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#F5F5F5",
+  "theme_color": "#4A90E2",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234A90E2' width='192' height='192' rx='32'/><text y='140' x='30' font-size='120'>📝</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%234A90E2' width='512' height='512' rx='80'/><text y='380' x='80' font-size='320'>📝</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}
