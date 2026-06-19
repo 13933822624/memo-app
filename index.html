@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4A90E2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>备忘录</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--primary:#4A90E2;--primary-dark:#357ABD;--success:#52C41A;--danger:#FF4D4F;--warning:#FAAD14;--bg:#F5F5F5;--card:#fff;--text:#333;--text-light:#999;--border:#E8E8E8;--radius:12px;--shadow:0 2px 8px rgba(0,0,0,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:80px}
+.hidden{display:none!important}
+.header{background:var(--primary);color:#fff;padding:16px;position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
+.header h1::before{content:'📝';font-size:20px}
+.header-actions{display:flex;gap:8px;margin-top:12px}
+.header-actions button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:8px 16px;border-radius:8px;font-size:14px;cursor:pointer;flex:1;transition:background .2s}
+.header-actions button:active{background:rgba(255,255,255,.3)}
+.calendar-wrap{padding:12px}
+.calendar-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.calendar-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--primary);color:#fff}
+.calendar-header button{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px}
+.calendar-header .month-title{font-size:16px;font-weight:600}
+.calendar-weekdays{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 4px;background:#fafafa;border-bottom:1px solid var(--border)}
+.calendar-weekdays span{text-align:center;font-size:11px;color:var(--text-light);padding:4px}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 4px;gap:2px}
+.calendar-day{text-align:center;padding:8px 4px;font-size:14px;cursor:pointer;border-radius:50%;transition:all .2s;position:relative;min-height:36px;display:flex;align-items:center;justify-content:center}
+.calendar-day:active{background:var(--bg)}
+.calendar-day.other-month{color:#ccc}
+.calendar-day.today{background:var(--primary);color:#fff;font-weight:600}
+.calendar-day.selected{background:#e8f0fc;border:2px solid var(--primary)}
+.calendar-day.has-todo::after{content:'';position:absolute;bottom:2px;width:4px;height:4px;background:var(--danger);border-radius:50%}
+.calendar-day.has-done::after{background:var(--success)}
+.calendar-day.has-both::after{width:6px;height:6px;background:linear-gradient(135deg,var(--danger) 50%,var(--success) 50%)}
+.tab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--border);display:flex;z-index:100;padding:8px 0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.tab-item{flex:1;text-align:center;padding:6px;font-size:11px;color:var(--text-light);cursor:pointer;transition:color .2s;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tab-item .tab-icon{font-size:22px;line-height:1}
+.tab-item.active{color:var(--primary)}
+.fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:var(--primary);border:none;border-radius:50%;color:#fff;font-size:28px;box-shadow:0 4px 12px rgba(74,144,226,.4);cursor:pointer;z-index:99;transition:transform .2s,box-shadow .2s}
+.fab:active{transform:scale(.95);box-shadow:0 2px 8px rgba(74,144,226,.4)}
+.fab::after{content:'+';font-weight:300}
+.view-section{padding:12px}
+.memo-list{display:flex;flex-direction:column;gap:10px}
+.memo-item{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;cursor:pointer;transition:transform .15s}
+.memo-item:active{transform:scale(.98)}
+.memo-item.done{opacity:.6}
+.memo-item.done .memo-content{text-decoration:line-through}
+.memo-date{font-size:11px;color:var(--text-light);margin-bottom:6px}
+.memo-content{font-size:15px;line-height:1.5;word-break:break-all;margin-bottom:8px}
+.memo-images{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.memo-images img{max-width:80px;max-height:80px;border-radius:8px;object-fit:cover}
+.memo-audio{display:flex;align-items:center;gap:8px;background:#f5f5f5;padding:8px 12px;border-radius:8px;margin-bottom:8px}
+.memo-audio audio{width:100%;height:32px}
+.memo-audio .play-btn{background:var(--primary);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
+.memo-tags{display:flex;gap:6px;flex-wrap:wrap}
+.memo-tag{background:#e8f0fc;color:var(--primary);padding:2px 8px;border-radius:10px;font-size:11px}
+.memo-actions{display:flex;gap:8px;margin-top:10px}
+.memo-actions button{background:none;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;flex:1;transition:all .2s}
+.memo-actions .done-btn{color:var(--success);border-color:var(--success)}
+.memo-actions .done-btn.done{background:var(--success);color:#fff}
+.memo-actions .alarm-btn{color:var(--warning);border-color:var(--warning)}
+.memo-actions .delete-btn{color:var(--danger);border-color:var(--danger)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:20px;transition:opacity .2s}
+.modal-overlay.hidden{opacity:0;pointer-events:none}
+.modal{background:#fff;border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;transition:transform .2s}
+.modal-header{padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:1}
+.modal-header h2{font-size:16px}
+.modal-close{background:none;border:none;font-size:24px;color:var(--text-light);cursor:pointer}
+.modal-body{padding:16px}
+.modal-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;position:sticky;bottom:0;background:#fff}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;color:var(--text-light);margin-bottom:6px}
+.form-group input[type="text"],.form-group textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:15px;outline:none;transition:border-color .2s;background:#fff}
+.form-group input[type="text"]:focus,.form-group textarea:focus{border-color:var(--primary)}
+.form-group textarea{min-height:80px;resize:vertical;font-family:inherit}
+.image-upload{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.image-upload .preview-img{max-width:70px;height:70px;object-fit:cover;border-radius:8px}
+.upload-btn{width:70px;height:70px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text-light);cursor:pointer;transition:border-color .2s;background:#fafafa;position:relative}
+.upload-btn:active{border-color:var(--primary);color:var(--primary)}
+.upload-btn input{display:none}
+.upload-btn .remove-img{position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:#FF4D4F;color:#fff;border-radius:50%;font-size:12px;line-height:20px;text-align:center;cursor:pointer;z-index:1}
+.voice-recorder{display:flex;flex-direction:column;gap:10px;align-items:center}
+.voice-timer{font-size:20px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.voice-waves{display:flex;justify-content:center;gap:3px;height:30px;align-items:center}
+.voice-wave{width:3px;background:var(--primary);border-radius:2px;animation:wave .6s ease-in-out infinite}
+.voice-wave:nth-child(1){animation-delay:0s}
+.voice-wave:nth-child(2){animation-delay:.1s}
+.voice-wave:nth-child(3){animation-delay:.2s}
+.voice-wave:nth-child(4){animation-delay:.3s}
+.voice-wave:nth-child(5){animation-delay:.4s}
+@keyframes wave{0%,100%{height:8px}50%{height:24px}}
+.voice-btn{background:var(--primary);border:none;color:#fff;padding:0;width:60px;height:60px;border-radius:50%;font-size:24px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.voice-btn.recording{background:var(--danger);animation:pulse 1s infinite}
+.voice-btn:active{transform:scale(.95)}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.voice-preview{width:100%;margin-top:8px}
+.voice-preview audio{width:100%}
+.alarm-toggle{display:flex;align-items:center;gap:12px;padding:12px;background:#fafafa;border-radius:8px}
+.alarm-toggle input[type="datetime-local"]{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;outline:none}
+.alarm-toggle label{font-size:14px;white-space:nowrap}
+.submit-btn{background:var(--primary);border:none;color:#fff;padding:14px;border-radius:8px;font-size:16px;cursor:pointer;flex:1;transition:background .2s}
+.submit-btn:active{background:var(--primary-dark)}
+.submit-btn:disabled{background:#ccc;cursor:not-allowed}
+.cancel-btn{background:#f5f5f5;border:1px solid var(--border);color:var(--text);padding:14px;border-radius:8px;font-size:16px;cursor:pointer;flex:1}
+.alarm-list{display:flex;flex-direction:column;gap:8px}
+.alarm-item{background:#fff;border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
+.alarm-item.active{background:#fff8e6}
+.alarm-time{font-size:18px;font-weight:600;color:var(--primary)}
+.alarm-info{flex:1}
+.alarm-info .alarm-memo{font-size:13px;color:var(--text);margin-top:2px}
+.alarm-info .alarm-status{font-size:11px;color:var(--text-light)}
+.alarm-del{background:none;border:none;color:var(--danger);font-size:18px;cursor:pointer;padding:4px}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-light)}
+.empty-state .empty-icon{font-size:64px;margin-bottom:16px}
+.empty-state p{font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>备忘录</h1>
+  <div class="header-actions">
+    <button id="btnToday">今天</button>
+    <button id="btnAddMemo">写备忘</button>
+  </div>
+</div>
+
+<div id="viewCalendar" class="view-section">
+  <div class="calendar-wrap">
+    <div class="calendar-card">
+      <div class="calendar-header">
+        <button id="calPrev">&#8592;</button>
+        <span class="month-title" id="calTitle"></span>
+        <button id="calNext">&#8594;</button>
+      </div>
+      <div class="calendar-weekdays">
+        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+      </div>
+      <div class="calendar-grid" id="calGrid"></div>
+    </div>
+  </div>
+  <div id="dayMemos"></div>
+</div>
+
+<div id="viewAll" class="view-section hidden">
+  <div class="memo-list" id="allMemoList"></div>
+  <div class="empty-state hidden" id="emptyAll">
+    <div class="empty-icon">📝</div>
+    <p>暂无备忘录<br>点击右下角 + 添加</p>
+  </div>
+</div>
+
+<div id="viewAlarms" class="view-section hidden">
+  <div class="alarm-list" id="alarmList"></div>
+  <div class="empty-state hidden" id="emptyAlarms">
+    <div class="empty-icon">⏰</div>
+    <p>暂无闹钟提醒</p>
+  </div>
+</div>
+
+<button class="fab" id="fabAdd" aria-label="添加"></button>
+
+<div class="tab-bar">
+  <div class="tab-item active" data-view="viewCalendar"><span class="tab-icon">📅</span><span>日历</span></div>
+  <div class="tab-item" data-view="viewAll"><span class="tab-icon">📋</span><span>全部</span></div>
+  <div class="tab-item" data-view="viewAlarms"><span class="tab-icon">⏰</span><span>闹钟</span></div>
+</div>
+
+<!-- Memo Modal -->
+<div class="modal-overlay hidden" id="memoModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">写备忘</h2>
+      <button class="modal-close" id="modalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <textarea id="memoText" placeholder="写下今天要记的事..." rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>图片</label>
+        <div class="image-upload" id="imageUpload">
+          <label class="upload-btn" id="addImageBtn">
+            <span>+</span>
+            <input type="file" accept="image/*" multiple id="imageInput">
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>语音</label>
+        <div class="voice-recorder">
+          <div class="voice-timer" id="voiceTimer">00:00</div>
+          <div class="voice-waves hidden" id="voiceWaves">
+            <div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div><div class="voice-wave"></div>
+          </div>
+          <button class="voice-btn" id="voiceBtn">🎤</button>
+          <div class="voice-preview hidden" id="voicePreview">
+            <audio id="voiceAudio" controls></audio>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>提醒</label>
+        <div class="alarm-toggle">
+          <label>⏰</label>
+          <input type="datetime-local" id="alarmTimeInput">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="cancel-btn" id="modalCancel">取消</button>
+      <button class="submit-btn" id="modalSubmit">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== IndexedDB =====
+const DB_NAME = 'MemoDB_v1';
+const DB_VERSION = 1;
+let db;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => { db = req.result; resolve(db); };
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('memos')) {
+        const s = d.createObjectStore('memos', { keyPath: 'id', autoIncrement: true });
+        s.createIndex('date','date');
+        s.createIndex('done','done');
+      }
+      if (!d.objectStoreNames.contains('alarms')) {
+        const a = d.createObjectStore('alarms', { keyPath: 'id', autoIncrement: true });
+        a.createIndex('time','time');
+      }
+    };
+  });
+}
+
+async function dbAdd(store, data) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(store,'readwrite');
+    const r = tx.objectStore(store).add(data);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+async function dbPut(store, data) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(store,'readwrite');
+    const r = tx.objectStore(store).put(data);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+async function dbGetAll(store) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(store,'readonly');
+    const r = tx.objectStore(store).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+async function dbDelete(store, id) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(store,'readwrite');
+    const r = tx.objectStore(store).delete(id);
+    r.onsuccess = () => res();
+    r.onerror = () => rej(r.error);
+  });
+}
+
+// ===== State =====
+let memos = [];
+let alarms = [];
+let currentView = 'viewCalendar';
+let selectedDate = formatDate(new Date());
+let currentYearMonth = new Date();
+let uploadedImages = [];
+let voiceBlob = null;
+let voiceRecorder = null;
+let voiceStream = null;
+let voiceTimer = null;
+let voiceSeconds = 0;
+let isRecording = false;
+let editingMemoId = null;
+
+// ===== Utils =====
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatTime(d) {
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function formatTimer(s) {
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ===== Calendar =====
+function renderCalendar() {
+  const ym = currentYearMonth;
+  const year = ym.getFullYear();
+  const month = ym.getMonth();
+  document.getElementById('calTitle').textContent = `${year}年${month+1}月`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  
+  const todoMap = {}, doneMap = {};
+  memos.forEach(m => {
+    if (!m.date) return;
+    if (m.done) doneMap[m.date] = (doneMap[m.date]||0)+1;
+    else todoMap[m.date] = (todoMap[m.date]||0)+1;
+  });
+  
+  const today = formatDate(new Date());
+  const firstDay = new Date(year,month,1).getDay();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const daysInPrev = new Date(year,month,0).getDate();
+  
+  for (let i=firstDay-1; i>=0; i--) {
+    const d = document.createElement('div');
+    d.className = 'calendar-day other-month';
+    d.textContent = daysInPrev - i;
+    grid.appendChild(d);
+  }
+  
+  for (let day=1; day<=daysInMonth; day++) {
+    const d = document.createElement('div');
+    d.className = 'calendar-day';
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    d.textContent = day;
+    if (dateStr === today) d.classList.add('today');
+    if (dateStr === selectedDate) d.classList.add('selected');
+    const hasT = todoMap[dateStr], hasD = doneMap[dateStr];
+    if (hasT && hasD) d.classList.add('has-both');
+    else if (hasT) d.classList.add('has-todo');
+    else if (hasD) d.classList.add('has-done');
+    d.addEventListener('click', () => {
+      document.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
+      d.classList.add('selected');
+      selectedDate = dateStr;
+      renderDayMemos();
+    });
+    grid.appendChild(d);
+  }
+  
+  const total = firstDay + daysInMonth;
+  const rem = total % 7;
+  if (rem > 0) {
+    for (let i=1; i<=7-rem; i++) {
+      const d = document.createElement('div');
+      d.className = 'calendar-day other-month';
+      d.textContent = i;
+      grid.appendChild(d);
+    }
+  }
+}
+
+function renderDayMemos() {
+  const c = document.getElementById('dayMemos');
+  const dayMemos = memos.filter(m => m.date === selectedDate);
+  if (dayMemos.length === 0) {
+    c.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><p>${selectedDate} 暂无备忘</p></div>`;
+    return;
+  }
+  c.innerHTML = `<h3 style="margin-bottom:10px;font-size:14px;color:var(--text-light)">${selectedDate}</h3><div class="memo-list">${dayMemos.map(renderMemoItem).join('')}</div>`;
+  attachMemoEvents(c);
+}
+
+function renderAllMemos() {
+  const list = document.getElementById('allMemoList');
+  const empty = document.getElementById('emptyAll');
+  const sorted = [...memos].sort((a,b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+  if (sorted.length === 0) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  list.innerHTML = sorted.map(renderMemoItem).join('');
+  attachMemoEvents(list);
+}
+
+function renderMemoItem(m) {
+  const imgs = (m.images||[]).map((img,i) => `<img src="${img}" alt="图" class="preview-img">`).join('');
+  const tags = m.alarmTime ? '<span class="memo-tag">⏰ 提醒</span>' : '';
+  return `<div class="memo-item ${m.done?'done':''}" data-id="${m.id}">
+    <div class="memo-date">${new Date(m.createdAt).toLocaleString('zh-CN')}</div>
+    ${m.text?`<div class="memo-content">${escapeHtml(m.text)}</div>`:''}
+    ${imgs?`<div class="memo-images">${imgs}</div>`:''}
+    ${m.voiceData?`<div class="memo-audio"><button class="play-btn" data-url="${m.voiceData}">▶</button><audio src="${m.voiceData}" controls></audio></div>`:''}
+    ${tags?`<div class="memo-tags">${tags}</div>`:''}
+    <div class="memo-actions">
+      <button class="edit-btn" data-id="${m.id}">✏️编辑</button>
+      <button class="done-btn ${m.done?'done':''}" data-id="${m.id}">${m.done?'✓已完成':'完成'}</button>
+      <button class="alarm-btn" data-id="${m.id}">⏰闹钟</button>
+      <button class="delete-btn" data-id="${m.id}">🗑删除</button>
+    </div>
+  </div>`;
+}
+
+function attachMemoEvents(c) {
+  c.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.id);
+      openEditMemoModal(id);
+    };
+  });
+  c.querySelectorAll('.done-btn').forEach(btn => {
+    btn.onclick = async e => {
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.id);
+      const m = memos.find(x => x.id === id);
+      if (m) { m.done = !m.done; await dbPut('memos', m); await loadMemos(); renderCurrentView(); }
+    };
+  });
+  c.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.onclick = async e => {
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.id);
+      if (confirm('确认删除？')) {
+        await dbDelete('memos', id);
+        const related = alarms.filter(a => a.memoId === id);
+        for (const a of related) await dbDelete('alarms', a.id);
+        await loadMemos(); await loadAlarms(); renderCurrentView();
+      }
+    };
+  });
+  c.querySelectorAll('.alarm-btn').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.id);
+      document.getElementById('alarmTimeInput').value = '';
+      document.getElementById('alarmTimeInput').dataset.memoId = id;
+      document.getElementById('memoModal').classList.add('hidden');
+      switchTab('viewAlarms');
+      showView('viewAlarms');
+    };
+  });
+  c.querySelectorAll('.play-btn').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const audio = btn.nextElementSibling;
+      if (audio.paused) { audio.play(); btn.textContent = '⏸'; }
+      audio.onpause = () => { btn.textContent = '▶'; };
+      audio.onended = () => { btn.textContent = '▶'; };
+    };
+  });
+}
+
+// ===== Alarms =====
+async function loadAlarms() {
+  alarms = await dbGetAll('alarms');
+  alarms.sort((a,b) => new Date(a.time) - new Date(b.time));
+  renderAlarms();
+}
+
+function renderAlarms() {
+  const list = document.getElementById('alarmList');
+  const empty = document.getElementById('emptyAlarms');
+  if (alarms.length === 0) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  const now = Date.now();
+  list.innerHTML = alarms.map(a => {
+    const ad = new Date(a.time);
+    const isPast = ad.getTime() <= now;
+    const memo = memos.find(m => m.id === a.memoId);
+    return `<div class="alarm-item ${isPast?'':'active'}">
+      <div class="alarm-time">${formatTime(ad)}</div>
+      <div class="alarm-info">
+        <div>${ad.toLocaleString('zh-CN')}</div>
+        <div class="alarm-memo">${memo?(memo.text||'(语音/图片)'):'(已删除)'}</div>
+        <div class="alarm-status">${isPast?'已触发':'待提醒'}</div>
+      </div>
+      <button class="alarm-del" data-id="${a.id}">×</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.alarm-del').forEach(btn => {
+    btn.onclick = async () => {
+      await dbDelete('alarms', parseInt(btn.dataset.id));
+      await loadAlarms();
+    };
+  });
+}
+
+async function checkAlarms() {
+  const now = Date.now();
+  for (const a of alarms) {
+    if (a.triggered) continue;
+    const at = new Date(a.time).getTime();
+    if (at <= now) {
+      a.triggered = true;
+      await dbPut('alarms', a);
+      const memo = memos.find(m => m.id === a.memoId);
+      const body = memo ? (memo.text||'语音/图片备忘') : '备忘录提醒';
+      if (Notification.permission === 'granted') {
+        new Notification('📝 备忘录提醒', {
+          body: body.length > 100 ? body.substring(0,100)+'...' : body,
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📝</text></svg>',
+          badge: '📝', tag: `memo-${a.id}`, requireInteraction: true
+        });
+      }
+      if ('vibrate' in navigator) navigator.vibrate([200,100,200]);
+      await loadAlarms();
+    }
+  }
+}
+
+async function requestNotificationPerm() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+// ===== Voice =====
+async function startRecording() {
+  try {
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('当前浏览器不支持录音功能，请使用Chrome或其他现代浏览器');
+      return;
+    }
+    voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceRecorder = new MediaRecorder(voiceStream, { mimeType: 'audio/webm' });
+    const chunks = [];
+    voiceRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    voiceRecorder.onstop = () => {
+      voiceBlob = new Blob(chunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(voiceBlob);
+      const audio = document.getElementById('voiceAudio');
+      audio.src = url;
+      document.getElementById('voicePreview').classList.remove('hidden');
+    };
+    voiceRecorder.start();
+    isRecording = true;
+    voiceSeconds = 0;
+    document.getElementById('voiceTimer').textContent = formatTimer(0);
+    document.getElementById('voiceWaves').classList.remove('hidden');
+    document.getElementById('voiceBtn').classList.add('recording');
+    document.getElementById('voiceBtn').textContent = '⏹';
+    voiceTimer = setInterval(() => {
+      voiceSeconds++;
+      document.getElementById('voiceTimer').textContent = formatTimer(voiceSeconds);
+    }, 1000);
+  } catch (err) {
+    console.error('录音权限错误:', err);
+    let errMsg = '无法访问麦克风';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      errMsg = '麦克风权限被拒绝，请到浏览器设置中开启：\n\n华为浏览器：设置 → 网站设置 → 麦克风 → 允许';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      errMsg = '未找到麦克风设备，请检查手机是否有麦克风';
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      errMsg = '麦克风被其他应用占用，请关闭其他使用麦克风的App后重试';
+    }
+    alert(errMsg);
+  }
+}
+
+function stopRecording() {
+  if (voiceRecorder && voiceRecorder.state !== 'inactive') voiceRecorder.stop();
+  if (voiceStream) voiceStream.getTracks().forEach(t => t.stop());
+  if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null; }
+  isRecording = false;
+  document.getElementById('voiceWaves').classList.add('hidden');
+  document.getElementById('voiceBtn').classList.remove('recording');
+  document.getElementById('voiceBtn').textContent = '🎤';
+}
+
+// ===== Image =====
+function handleImageUpload(files) {
+  const uploadArea = document.getElementById('imageUpload');
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      uploadedImages.push(e.target.result);
+      renderImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderImagePreviews() {
+  const uploadArea = document.getElementById('imageUpload');
+  uploadArea.innerHTML = '';
+  uploadedImages.forEach((img, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.position = 'relative';
+    const imgEl = document.createElement('img');
+    imgEl.src = img;
+    imgEl.className = 'preview-img';
+    const removeBtn = document.createElement('span');
+    removeBtn.className = 'remove-img';
+    removeBtn.textContent = '×';
+    removeBtn.onclick = e => { e.stopPropagation(); uploadedImages.splice(i,1); renderImagePreviews(); };
+    wrap.appendChild(imgEl);
+    wrap.appendChild(removeBtn);
+    uploadArea.appendChild(wrap);
+  });
+  const addBtn = document.createElement('label');
+  addBtn.className = 'upload-btn';
+  addBtn.innerHTML = '<span>+</span>';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.multiple = true;
+  input.onchange = e => handleImageUpload(e.target.files);
+  addBtn.appendChild(input);
+  uploadArea.appendChild(addBtn);
+}
+
+// ===== Memo Modal =====
+function openMemoModal() {
+  editingMemoId = null;
+  document.getElementById('modalTitle').textContent = '写备忘';
+  document.getElementById('memoText').value = '';
+  document.getElementById('alarmTimeInput').value = '';
+  document.getElementById('alarmTimeInput').dataset.memoId = '';
+  uploadedImages = [];
+  voiceBlob = null;
+  voiceSeconds = 0;
+  isRecording = false;
+  if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null; }
+  document.getElementById('voiceTimer').textContent = '00:00';
+  document.getElementById('voiceWaves').classList.add('hidden');
+  document.getElementById('voicePreview').classList.add('hidden');
+  document.getElementById('voiceBtn').classList.remove('recording');
+  document.getElementById('voiceBtn').textContent = '🎤';
+  renderImagePreviews();
+  document.getElementById('memoModal').classList.remove('hidden');
+}
+
+function openEditMemoModal(id) {
+  const m = memos.find(x => x.id === id);
+  if (!m) return;
+  editingMemoId = id;
+  document.getElementById('modalTitle').textContent = '编辑备忘';
+  document.getElementById('memoText').value = m.text || '';
+  document.getElementById('alarmTimeInput').value = '';
+  document.getElementById('alarmTimeInput').dataset.memoId = '';
+  uploadedImages = m.images ? [...m.images] : [];
+  voiceBlob = null;
+  voiceSeconds = 0;
+  isRecording = false;
+  if (voiceTimer) { clearInterval(voiceTimer); voiceTimer = null; }
+  document.getElementById('voiceTimer').textContent = '00:00';
+  document.getElementById('voiceWaves').classList.add('hidden');
+  if (m.voiceData) {
+    document.getElementById('voiceAudio').src = m.voiceData;
+    document.getElementById('voicePreview').classList.remove('hidden');
+  } else {
+    document.getElementById('voicePreview').classList.add('hidden');
+  }
+  document.getElementById('voiceBtn').classList.remove('recording');
+  document.getElementById('voiceBtn').textContent = '🎤';
+  renderImagePreviews();
+  document.getElementById('memoModal').classList.remove('hidden');
+}
+
+function closeMemoModal() {
+  if (isRecording) stopRecording();
+  document.getElementById('memoModal').classList.add('hidden');
+}
+
+async function saveMemo() {
+  const text = document.getElementById('memoText').value.trim();
+  const alarmTime = document.getElementById('alarmTimeInput').value;
+  const memoId = parseInt(document.getElementById('alarmTimeInput').dataset.memoId) || null;
+
+  if (!text && uploadedImages.length === 0 && !voiceBlob) {
+    alert('请输入内容或添加图片/语音');
+    return;
+  }
+
+  let voiceData = null;
+  if (voiceBlob) {
+    voiceData = await blobToBase64(voiceBlob);
+  }
+
+  const memo = {
+    text,
+    images: [...uploadedImages],
+    voiceData,
+    date: selectedDate,
+    done: false,
+    createdAt: new Date().toISOString(),
+    alarmTime: null
+  };
+
+  let savedId;
+  if (editingMemoId) {
+    memo.id = editingMemoId;
+    savedId = await dbPut('memos', memo);
+  } else {
+    savedId = await dbAdd('memos', memo);
+    memo.id = savedId;
+  }
+
+  if (alarmTime) {
+    await dbAdd('alarms', {
+      memoId: savedId,
+      time: new Date(alarmTime).toISOString(),
+      triggered: false
+    });
+  }
+
+  await loadMemos();
+  if (memoId) await loadAlarms();
+  closeMemoModal();
+  renderCurrentView();
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ===== Navigation =====
+function showView(viewId) {
+  ['viewCalendar','viewAll','viewAlarms'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== viewId);
+  });
+  currentView = viewId;
+}
+
+function switchTab(viewId) {
+  document.querySelectorAll('.tab-item').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === viewId);
+  });
+  showView(viewId);
+}
+
+function renderCurrentView() {
+  if (currentView === 'viewCalendar') { renderCalendar(); renderDayMemos(); }
+  else if (currentView === 'viewAll') renderAllMemos();
+  else if (currentView === 'viewAlarms') renderAlarms();
+}
+
+async function loadMemos() {
+  memos = await dbGetAll('memos');
+  memos.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+// ===== Init =====
+async function init() {
+  await openDB();
+  await loadMemos();
+  await loadAlarms();
+  renderCalendar();
+  renderDayMemos();
+  await requestNotificationPerm();
+
+  // Alarm check every 10s
+  setInterval(checkAlarms, 10000);
+  // Also check immediately when page becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkAlarms();
+  });
+
+  // FAB & header add button
+  document.getElementById('fabAdd').onclick = openMemoModal;
+  document.getElementById('btnAddMemo').onclick = openMemoModal;
+  document.getElementById('btnToday').onclick = () => {
+    selectedDate = formatDate(new Date());
+    currentYearMonth = new Date();
+    renderCalendar();
+    renderDayMemos();
+  };
+
+  // Calendar nav
+  document.getElementById('calPrev').onclick = () => {
+    currentYearMonth.setMonth(currentYearMonth.getMonth() - 1);
+    renderCalendar();
+  };
+  document.getElementById('calNext').onclick = () => {
+    currentYearMonth.setMonth(currentYearMonth.getMonth() + 1);
+    renderCalendar();
+  };
+
+  // Tabs
+  document.querySelectorAll('.tab-item').forEach(tab => {
+    tab.onclick = () => switchTab(tab.dataset.view);
+  });
+
+  // Modal
+  document.getElementById('modalClose').onclick = closeMemoModal;
+  document.getElementById('modalCancel').onclick = closeMemoModal;
+  document.getElementById('modalSubmit').onclick = saveMemo;
+
+  // Voice
+  document.getElementById('voiceBtn').onclick = () => {
+    if (isRecording) stopRecording();
+    else startRecording();
+  };
+
+  // Image
+  document.getElementById('imageInput').onchange = e => handleImageUpload(e.target.files);
+
+  // Alarm time - when selecting a time, if there's a memoId in dataset, create alarm directly
+  document.getElementById('alarmTimeInput').onchange = async e => {
+    const memoId = parseInt(e.target.dataset.memoId);
+    if (memoId && e.target.value) {
+      await dbAdd('alarms', {
+        memoId,
+        time: new Date(e.target.value).toISOString(),
+        triggered: false
+      });
+      await loadAlarms();
+      e.target.value = '';
+      e.target.dataset.memoId = '';
+      switchTab('viewAlarms');
+      showView('viewAlarms');
+    }
+  };
+
+  // Close modal on overlay click
+  document.getElementById('memoModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('memoModal')) closeMemoModal();
+  });
+}
+
+init();
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
